@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BODi Workout Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --dd-color: #FF4B12;
+    --dd-accent: #FF8C00;
+    --p9-color: #0077FF;
+    --p9-accent: #00CFFF;
+    --bg: #09090e;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --muted: #888;
+    --dim: #555;
+    --green: #22c97a;
+    --red: #ff4f4f;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; padding-bottom: 60px; }
+
+  #header { background: linear-gradient(180deg,#13131c 0%,var(--bg) 100%); border-bottom: 1px solid var(--border); padding: 20px 20px 0; position: sticky; top: 0; z-index: 200; }
+  .header-inner { max-width: 680px; margin: 0 auto; }
+  .header-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:10px; letter-spacing:0.25em; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:3px; }
+  .header-title { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:900; letter-spacing:0.06em; color:#fff; margin-bottom:18px; }
+
+  .tabs { display:flex; }
+  .tab-btn { flex:1; padding:10px 8px; border:none; cursor:pointer; background:transparent; border-bottom:3px solid transparent; transition:all 0.2s; text-align:center; }
+  .tab-btn .tab-label { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; display:block; color:var(--dim); transition:color 0.2s; }
+  .tab-btn .tab-sub { font-size:10px; color:var(--dim); display:block; margin-top:2px; }
+  .tab-btn.active-dd { border-bottom-color:var(--dd-color); }
+  .tab-btn.active-dd .tab-label { color:var(--dd-color); }
+  .tab-btn.active-dd .tab-sub { color:var(--muted); }
+  .tab-btn.active-p9 { border-bottom-color:var(--p9-color); }
+  .tab-btn.active-p9 .tab-label { color:var(--p9-color); }
+  .tab-btn.active-p9 .tab-sub { color:var(--muted); }
+
+  #content { max-width:680px; margin:0 auto; padding:20px 16px 0; }
+  .program-view { display:none; }
+  .program-view.active { display:block; animation:fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  .prog-hero { padding:18px; border-radius:12px; margin-bottom:20px; border:1px solid; }
+  .prog-hero.dd { background:linear-gradient(135deg,rgba(255,75,18,0.2) 0%,transparent 60%); border-color:rgba(255,75,18,0.3); }
+  .prog-hero.p9 { background:linear-gradient(135deg,rgba(0,119,255,0.2) 0%,transparent 60%); border-color:rgba(0,119,255,0.3); }
+  .prog-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:4px; }
+  .prog-name { font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:900; letter-spacing:0.04em; color:#fff; }
+  .prog-meta { font-size:13px; color:#bbb; margin-top:4px; }
+  .prog-bar-wrap { margin-top:10px; }
+  .prog-bar-label { font-size:11px; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .prog-bar-track { height:5px; background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; }
+  .prog-bar-fill { height:100%; border-radius:99px; transition:width 0.4s ease; }
+
+  .block { margin-bottom:14px; }
+  .block-header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; cursor:pointer; border:1px solid; transition:opacity 0.15s; }
+  .block-header:hover { opacity:0.9; }
+  .block-header.dd { background:linear-gradient(135deg,rgba(255,75,18,0.13),rgba(255,75,18,0.04)); border-color:rgba(255,75,18,0.3); }
+  .block-header.p9 { background:linear-gradient(135deg,rgba(0,119,255,0.13),rgba(0,119,255,0.04)); border-color:rgba(0,119,255,0.3); }
+  .block-title { font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; }
+  .block-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .block-chevron { margin-left:auto; font-size:20px; transition:transform 0.2s; flex-shrink:0; }
+  .block-chevron.open { transform:rotate(90deg); }
+  .block-body { display:none; margin-top:8px; }
+  .block-body.open { display:block; }
+
+  /* Week tabs */
+  .week-tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .week-tab { padding:6px 14px; border-radius:20px; font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:var(--muted); transition:all 0.15s; white-space:nowrap; }
+  .week-tab:hover { color:#ccc; border-color:rgba(255,255,255,0.2); }
+  .week-tab.active-dd { background:rgba(255,75,18,0.15); border-color:var(--dd-color); color:var(--dd-color); }
+  .week-tab.active-p9 { background:rgba(0,119,255,0.15); border-color:var(--p9-color); color:var(--p9-color); }
+  .week-tab.logged::after { content:'●'; font-size:6px; margin-left:5px; vertical-align:middle; opacity:0.6; }
+
+  /* Compare bar */
+  .compare-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.07); margin-top:4px; }
+  .compare-label { font-size:11px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+  .compare-toggle { padding:4px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.06); color:#ccc; font-size:11px; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+  .compare-toggle:hover { background:rgba(255,255,255,0.1); }
+  .compare-toggle.on { background:rgba(255,255,255,0.11); color:#fff; border-color:rgba(255,255,255,0.28); }
+  .compare-section { display:none; margin-bottom:8px; }
+  .compare-section.open { display:block; }
+
+  /* Compare cards */
+  .cmp-card { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .cmp-card-head { padding:8px 14px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.06); font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:800; color:#e0e0e0; letter-spacing:0.03em; }
+  .cmp-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .cmp-table th { padding:5px 10px; text-align:left; color:var(--dim); font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.05); font-size:10px; white-space:nowrap; }
+  .cmp-table td { padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.04); color:#ccc; vertical-align:top; }
+  .cmp-table tr:last-child td { border-bottom:none; }
+  .ex-cell { color:var(--muted); font-size:11px; max-width:110px; line-height:1.3; }
+  .delta-up { color:var(--green); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; display:block; margin-top:1px; }
+  .delta-down { color:var(--red); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; display:block; margin-top:1px; }
+  .delta-same { color:var(--dim); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; display:block; margin-top:1px; }
+  .no-cmp-data { color:var(--dim); font-style:italic; font-size:12px; padding:12px 14px; }
+
+  /* Day cards */
+  .day-card { border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:7px; overflow:hidden; transition:border-color 0.2s; }
+  .day-card.exp-dd { border-color:rgba(255,75,18,0.35); background:rgba(255,255,255,0.035); }
+  .day-card.exp-p9 { border-color:rgba(0,119,255,0.35); background:rgba(255,255,255,0.035); }
+  .day-header { display:flex; align-items:center; gap:10px; padding:10px 14px; user-select:none; }
+  .day-num { width:30px; height:30px; border-radius:50%; border:2px solid; display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:800; flex-shrink:0; cursor:pointer; transition:background 0.2s,color 0.2s; }
+  .day-name { font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:700; color:#f0f0f0; letter-spacing:0.01em; }
+  .day-focus { font-size:11px; color:var(--muted); margin-top:1px; }
+  .day-chev { margin-left:auto; font-size:18px; color:var(--dim); transition:transform 0.2s; }
+  .day-chev.open { transform:rotate(180deg); }
+  .day-body { display:none; padding:0 14px 14px; }
+  .day-body.open { display:block; }
+  .day-divider { height:1px; background:rgba(255,255,255,0.06); margin-bottom:12px; }
+
+  .ex-row { margin-bottom:10px; background:rgba(255,255,255,0.03); border-radius:8px; padding:9px 11px; border:1px solid rgba(255,255,255,0.06); }
+  .ex-name { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:#e0e0e0; letter-spacing:0.03em; margin-bottom:7px; }
+  .sets-row { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .set-grp { display:flex; align-items:center; gap:3px; }
+  .set-lbl { font-size:10px; color:var(--dim); min-width:18px; font-family:'Barlow Condensed',sans-serif; font-weight:700; }
+  .sinput { padding:4px 5px; border-radius:5px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.06); color:#fff; font-size:12px; outline:none; transition:border-color 0.15s; }
+  .sinput:focus { border-color:rgba(255,255,255,0.25); }
+  .sinput.w { width:52px; }
+  .sinput.r { width:44px; }
+  .sbtn { padding:3px 9px; border-radius:5px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:var(--muted); cursor:pointer; font-size:16px; line-height:1; transition:background 0.15s; }
+  .sbtn:hover { background:rgba(255,255,255,0.1); }
+  .notes-field { width:100%; padding:7px 10px; margin-top:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:7px; color:#bbb; font-size:12px; font-family:'Barlow',sans-serif; resize:vertical; outline:none; }
+  .notes-field:focus { border-color:rgba(255,255,255,0.2); }
+
+  .legend { margin-top:24px; padding:14px 16px; background:rgba(255,255,255,0.02); border-radius:10px; border:1px solid var(--border); }
+  .legend-title { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; color:var(--dim); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:7px; }
+  .legend-text { font-size:12px; color:#777; line-height:1.65; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-inner">
+    <div class="header-eyebrow">BODi · Beachbody</div>
+    <div class="header-title">WORKOUT TRACKER</div>
+    <div class="tabs">
+      <button class="tab-btn active-dd" onclick="switchProg('dd')" id="tab-dd">
+        <span class="tab-label">Dig Deeper</span>
+        <span class="tab-sub">Shaun T · 12 Weeks</span>
+      </button>
+      <button class="tab-btn" onclick="switchProg('p9')" id="tab-p9">
+        <span class="tab-label">P90X Gen Next</span>
+        <span class="tab-sub">Waz Ashayer · 90 Days</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="content">
+  <div class="program-view active" id="view-dd">
+    <div class="prog-hero dd">
+      <div class="prog-eyebrow" style="color:var(--dd-accent)">BODi Program · Strength</div>
+      <div class="prog-name">DIG DEEPER</div>
+      <div class="prog-meta">with Shaun T · 12 Weeks · 5 Days/Week · Dumbbells + Bench</div>
+      <div class="prog-bar-wrap">
+        <div class="prog-bar-label"><span>Overall Progress</span><span id="dd-prog-txt">0 / 60</span></div>
+        <div class="prog-bar-track"><div class="prog-bar-fill" id="dd-prog-bar" style="background:var(--dd-color);width:0%"></div></div>
+      </div>
+    </div>
+    <div id="dd-blocks"></div>
+    <div class="legend">
+      <div class="legend-title">How to Use</div>
+      <div class="legend-text">Each block repeats for 4 weeks — use the <strong style="color:#ccc">Week 1 / 2 / 3 / 4</strong> tabs to switch between them. A dot (●) on a tab means you've logged data that week. Log weight (lbs) and reps per set per exercise. Tap the circle to mark a day complete. Hit <strong style="color:#ccc">Compare Weeks</strong> inside any block to see your best set per exercise across all 4 weeks with up/down indicators. Data saves automatically in your browser.</div>
+    </div>
+  </div>
+  <div class="program-view" id="view-p9">
+    <div class="prog-hero p9">
+      <div class="prog-eyebrow" style="color:var(--p9-accent)">BODi Program · Extreme Home Fitness</div>
+      <div class="prog-name">P90X GEN NEXT</div>
+      <div class="prog-meta">with Waz Ashayer · 12 Weeks · 7 Days/Week · Dumbbells + Bench</div>
+      <div class="prog-bar-wrap">
+        <div class="prog-bar-label"><span>Overall Progress</span><span id="p9-prog-txt">0 / 90</span></div>
+        <div class="prog-bar-track"><div class="prog-bar-fill" id="p9-prog-bar" style="background:var(--p9-color);width:0%"></div></div>
+      </div>
+    </div>
+    <div id="p9-blocks"></div>
+    <div class="legend">
+      <div class="legend-title">How to Use</div>
+      <div class="legend-text">The schedule mirrors the official P90X Gen Next calendar exactly. <strong style="color:#ccc">Phase 1</strong> (Weeks 1–3) uses alternating patterns — Wk1&3 are identical, Wk2 alternates, each logged in separate blocks. <strong style="color:#ccc">Phase 2</strong> (Weeks 5–7) follows the same alternating logic. <strong style="color:#ccc">Phase 3</strong> (Weeks 9–12) has 4 unique weeks, each its own block. Exercises match the official dumbbell tracker sheets with Block 1 / Block 2 / Finisher sections. Recovery weeks follow the official schedule. Data saves in your browser automatically.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PROGRAM DATA ──────────────────────────────────────────────────────────────
+
+const BLOCKS = {
+  dd: [
+    {
+      name:"Block 1 – Sculpt & Define", weeks:"Weeks 1–4",
+      style:"Giant circuits · High reps (15–20) · Muscular endurance",
+      wkCount:4,
+      days:[
+        {n:"Total Body",              focus:"Full Body",              dur:"47 min", ex:["Incline Chest Press","Underhand Row","Overhead Tricep Extension","Balanced Hammer Curl","Shoulder Press","Squat","Reverse Lunge","Iron Cross Abs"]},
+        {n:"Legs",                    focus:"Lower Body",             dur:"45 min", ex:["Squat","Reverse Lunge","Romanian Deadlift","Sumo Squat","Step-Up","Glute Bridge","Calf Raise","Side Lunge"]},
+        {n:"Total Body 2",            focus:"Full Body",              dur:"47 min", ex:["Chest Fly","Bent-Over Row","Lateral Raise","Bicep Curl","Tricep Kickback","Deadlift","Front Lunge","Plank Row"]},
+        {n:"Shoulders, Glutes & Abs", focus:"Shoulders / Glutes / Core", dur:"48 min", ex:["Shoulder Press","Arnold Press","Front Raise","Glute Kickback","Hip Thrust","Donkey Kick","Plank","V-Up","Russian Twist"]},
+        {n:"Chest & Back",            focus:"Upper Body",             dur:"52 min", ex:["Incline Chest Press","Flat Chest Press","Chest Fly","Incline Push-Up","Bent-Over Row","Underhand Row","Rear Delt Fly","Squeeze Press"]},
+        {n:"Steady State Cardio",     focus:"Cardio (Optional)",      dur:"30–45 min", ex:[]},
+        {n:"Rest",                    focus:"Recovery",               dur:"—",      ex:[]},
+      ]
+    },
+    {
+      name:"Block 2 – Build", weeks:"Weeks 5–8",
+      style:"Supersets · Heavier weight · Lower reps (10–15) · Muscle building",
+      wkCount:4,
+      days:[
+        {n:"Chest",                   focus:"Chest",                  dur:"40 min", ex:["Incline Chest Fly","Flat Chest Press","Decline Push-Up","Incline Chest Press","Chest Fly","Hex Press"]},
+        {n:"Back & Abs",              focus:"Back / Core",            dur:"46 min", ex:["Wide-Grip Row","Underhand Row","Rear Delt Fly","Plank Row","Dead Stop Row","V-Up","Russian Twist","Reverse Crunch"]},
+        {n:"Legs",                    focus:"Lower Body",             dur:"40 min", ex:["Squat","Romanian Deadlift","Reverse Lunge","Side Lunge","Sumo Deadlift","Hip Thrust","Calf Raise","Glute Bridge"]},
+        {n:"Shoulders, Bis & Tris",   focus:"Shoulders / Arms",       dur:"48 min", ex:["Shoulder Press","Arnold Press","Lateral Raise","Front Raise","Hammer Curl","Reciprocating Curl","Overhead Tricep Extension","Tricep Kickback","Tricep Dip"]},
+        {n:"Arms",                    focus:"Arms",                   dur:"46 min", ex:["Bicep Curl","Hammer Curl","Concentration Curl","Reciprocating Hammer Curl","Reciprocating Neutral Curl","Tricep Dip","Tricep Push-Up","Close-Grip Press"]},
+        {n:"Steady State Cardio",     focus:"Cardio (Optional)",      dur:"30–45 min", ex:[]},
+        {n:"Rest",                    focus:"Recovery",               dur:"—",      ex:[]},
+      ]
+    },
+    {
+      name:"Block 3 – Power & Peak", weeks:"Weeks 9–12",
+      style:"Drop sets & pyramids · Heaviest weight · Low reps (6–12) · Max strength",
+      wkCount:4,
+      days:[
+        {n:"Total Body Power",        focus:"Full Body",              dur:"52 min", ex:["Heavy Chest Press","Heavy Row","Heavy Squat","Romanian Deadlift","Shoulder Press","Bicep Curl","Tricep Extension","Hip Thrust"]},
+        {n:"Legs Power",              focus:"Lower Body",             dur:"40 min", ex:["Heavy Squat","Heavy Deadlift","Weighted Reverse Lunge","Sumo Squat","Hip Thrust","Glute Bridge","Calf Raise"]},
+        {n:"Chest & Back Power",      focus:"Upper Body",             dur:"52 min", ex:["Heavy Flat Press","Heavy Row","Incline Press","Decline Push-Up","Chest Fly","Rear Delt Row","Pullover","Squeeze Press"]},
+        {n:"Shoulders & Arms Power",  focus:"Shoulders / Arms",       dur:"48 min", ex:["Heavy Shoulder Press","Lateral Raise","Front Raise","Heavy Hammer Curl","Heavy Bicep Curl","Heavy Tricep Extension","Close-Grip Press","Tricep Dip"]},
+        {n:"Total Body Burnout",      focus:"Full Body",              dur:"47 min", ex:["Burnout – Chest","Burnout – Back","Burnout – Legs","Burnout – Shoulders","Burnout – Arms","Abs Finisher"]},
+        {n:"Steady State Cardio",     focus:"Cardio (Optional)",      dur:"30–45 min", ex:[]},
+        {n:"Rest",                    focus:"Recovery",               dur:"—",      ex:[]},
+      ]
+    }
+  ],
+  p9: [
+    // ── PHASE 1 ── Wk1&3 = Push/Plyo/Upper/Mob/Lower/Boxing/MFR  Wk2 = Pull/Boxing/Lower/Mob/Upper/Plyo/MFR
+    // Modelled as 3 separate weeks so each week's unique schedule is tracked independently
+    {
+      name:"Phase 1 – Foundation", weeks:"Weeks 1–3",
+      style:"Metabolic Overload · Neuro-Performance · Active Recovery · Wk1&3 identical, Wk2 alternates",
+      wkCount:3,
+      // Week 1 template (also Week 3): Mon=Push Strength, Tue=Plyometrix, Wed=Upper Body, Thu=Active Mobility, Fri=Lower Body, Sat=Cardio Boxing, Sun=Myofascial Release
+      // Week 2 template: Mon=Pull Strength, Tue=Cardio Boxing, Wed=Lower Body, Thu=Active Mobility, Fri=Upper Body, Sat=Plyometrix, Sun=Myofascial Release
+      // We track by the workout type. Weeks 1&3 share the same day-slot template; week 2 alternates.
+      // For simplicity the days listed reflect the Week 1/3 pattern (most common). Week 2 note is in sub.
+      days:[
+        {n:"Push Strength",     focus:"Strength · Mon (Wk 1&3)",    dur:"30–45 min", ex:["— Block 1 —","Goblet Squat","Alternating Step Ups","Wide Stance Rotational Push","— Block 2 —","Sumo Squats","Incline Bench Press","Curtsey Lunges","Push Press","— Finisher —","Squat Thruster"]},
+        {n:"Plyometrix",        focus:"Power · Tue (Wk 1&3)",       dur:"30–45 min", ex:[]},
+        {n:"Upper Body",        focus:"Strength · Wed (Wk 1&3)",    dur:"30–45 min", ex:["— Block 1 —","Tempo Bench Press","Strict Arnie Press","Chest Fly","Skull Crusher","— Block 2 —","Narrow Supported Row","Prone Fly","Supinated Biceps Curl","— Finisher —","Hammer Curls","Lateral Raises"]},
+        {n:"Active Mobility",   focus:"Recovery · Thu",             dur:"30 min",    ex:[]},
+        {n:"Lower Body",        focus:"Strength · Fri (Wk 1&3)",    dur:"30–45 min", ex:["— Block 1 —","Dual Front Squat","Bulgarian Split Squat (Right)","Bulgarian Split Squat (Left)","— Block 2 —","Romanian Deadlift (RDL)","Lateral Bench Step Downs (Right)","Lateral Bench Step Downs (Left)","— Finisher —","Alt Lateral Lunges","Suitcase Deadlift"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Sat (Wk 1&3)",      dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ],
+      weekNotes:["Wk 1: Mon=Push, Tue=Plyo, Wed=Upper, Thu=Mob, Fri=Lower, Sat=Boxing, Sun=MFR","Wk 2: Mon=Pull, Tue=Boxing, Wed=Lower, Thu=Mob, Fri=Upper, Sat=Plyo, Sun=MFR — use notes field for Pull/Upper/Lower day logging","Wk 3: Same as Week 1"]
+    },
+    // Phase 1 Week 2 logged separately so Pull Strength, Upper Body, Lower Body each get their own entry
+    {
+      name:"Phase 1 – Week 2 (Alternate)",  weeks:"Week 2 only",
+      style:"Mon=Pull Strength · Tue=Cardio Boxing · Wed=Lower Body · Thu=Active Mobility · Fri=Upper Body · Sat=Plyometrix · Sun=MFR",
+      wkCount:1,
+      days:[
+        {n:"Pull Strength",     focus:"Strength · Mon",             dur:"30–45 min", ex:["— Block 1 —","Dumbbell Clean","Hip Thrust on Bench","Upright Row","— Block 2 —","RDL","SA Row Right","SA Row Left","Pull Over","— Finisher —","Skier Swing","Bent Over Reverse Flys"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Tue",               dur:"30–45 min", ex:[]},
+        {n:"Lower Body",        focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Dual Front Squat","Bulgarian Split Squat (Right)","Bulgarian Split Squat (Left)","— Block 2 —","Romanian Deadlift (RDL)","Lateral Bench Step Downs (Right)","Lateral Bench Step Downs (Left)","— Finisher —","Alt Lateral Lunges","Suitcase Deadlift"]},
+        {n:"Active Mobility",   focus:"Recovery · Thu",             dur:"30 min",    ex:[]},
+        {n:"Upper Body",        focus:"Strength · Fri",             dur:"30–45 min", ex:["— Block 1 —","Tempo Bench Press","Strict Arnie Press","Chest Fly","Skull Crusher","— Block 2 —","Narrow Supported Row","Prone Fly","Supinated Biceps Curl","— Finisher —","Hammer Curls","Lateral Raises"]},
+        {n:"Plyometrix",        focus:"Power · Sat",                dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    {
+      name:"Recovery Week 1", weeks:"Week 4",
+      style:"Speed & Agility · Active Mobility · Core Circuit · Active Flexibility · Cardio Boxing · Core Circuit · MFR",
+      wkCount:1,
+      days:[
+        {n:"Speed and Agility", focus:"Agility · Mon",   dur:"30–45 min", ex:[]},
+        {n:"Active Mobility",   focus:"Mobility · Tue",  dur:"30 min",    ex:[]},
+        {n:"Core Circuit",      focus:"Core · Wed",      dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Active Flexibility",focus:"Flexibility · Thu",dur:"30 min",   ex:[]},
+        {n:"Cardio Boxing",     focus:"Cardio · Fri",    dur:"30–45 min", ex:[]},
+        {n:"Core Circuit",      focus:"Core · Sat",      dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",  dur:"30 min",    ex:[]},
+      ]
+    },
+    // ── PHASE 2 ── Wk5&7 = FBS/Accel-Decel/Pull/ActiveFlex/FBP/Speed/MFR  Wk6 = FBP/Speed/Push/MFR/ActiveFlex/FBS/Accel/MFR
+    {
+      name:"Phase 2 – Strength & Power", weeks:"Weeks 5–7",
+      style:"Full Body Strength · Full Body Power · Accel/Decel · Wk5&7 identical, Wk6 alternates",
+      wkCount:3,
+      days:[
+        {n:"Full Body Strength",focus:"Strength · Mon (Wk 5&7)",   dur:"30–45 min", ex:["— Block 1 —","Squat Thruster","Chest Press to Leg Raise","2 RDL to 2 Bent Over Row","Devil's Press","— Block 2 —","Heel Elevated Squat","Frontal to Lateral Raise","— Finisher —","Renegade Row","Ground to Overhead"]},
+        {n:"Accel/Decel",       focus:"Agility · Tue (Wk 5&7)",    dur:"30–45 min", ex:[]},
+        {n:"Pull Strength",     focus:"Strength · Wed (Wk 5&7)",   dur:"30–45 min", ex:["— Block 1 —","Dumbbell Clean","Hip Thrust on Bench","Upright Row","— Block 2 —","RDL","SA Row Right","SA Row Left","Pull Over","— Finisher —","Skier Swing","Bent Over Reverse Flys"]},
+        {n:"Active Flexibility",focus:"Flexibility · Thu",          dur:"30 min",    ex:[]},
+        {n:"Full Body Power",   focus:"Power · Fri (Wk 5&7)",      dur:"30–45 min", ex:["— Block 1 —","Glute Swings R","Glute Swings L","Clean to Press R","Clean to Press L","SA Devil's Press R","SA Devil's Press L","— Block 2 —","Single Leg Squat to Bench","— Finisher —","Heromaker"]},
+        {n:"Speed and Agility", focus:"Agility · Sat (Wk 5&7)",    dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    // Phase 2 Week 6 alternate
+    {
+      name:"Phase 2 – Week 6 (Alternate)", weeks:"Week 6 only",
+      style:"Mon=Full Body Power · Tue=Speed & Agility · Wed=Push Strength · Thu=MFR · Fri=Active Flexibility · Sat=Full Body Strength · Sat=Accel/Decel · Sun=MFR",
+      wkCount:1,
+      days:[
+        {n:"Full Body Power",   focus:"Power · Mon",                dur:"30–45 min", ex:["— Block 1 —","Glute Swings R","Glute Swings L","Clean to Press R","Clean to Press L","SA Devil's Press R","SA Devil's Press L","— Block 2 —","Single Leg Squat to Bench","— Finisher —","Heromaker"]},
+        {n:"Speed and Agility", focus:"Agility · Tue",              dur:"30–45 min", ex:[]},
+        {n:"Push Strength",     focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Goblet Squat","Alternating Step Ups","Wide Stance Rotational Push","— Block 2 —","Sumo Squats","Incline Bench Press","Curtsey Lunges","Push Press","— Finisher —","Squat Thruster"]},
+        {n:"Myofascial Release",focus:"Recovery · Thu",             dur:"30 min",    ex:[]},
+        {n:"Active Flexibility",focus:"Flexibility · Fri",          dur:"30 min",    ex:[]},
+        {n:"Full Body Strength",focus:"Strength · Sat",             dur:"30–45 min", ex:["— Block 1 —","Squat Thruster","Chest Press to Leg Raise","2 RDL to 2 Bent Over Row","Devil's Press","— Block 2 —","Heel Elevated Squat","Frontal to Lateral Raise","— Finisher —","Renegade Row","Ground to Overhead"]},
+        {n:"Accel/Decel",       focus:"Agility · Sat (2nd)",        dur:"30–45 min", ex:[]},
+      ]
+    },
+    {
+      name:"Recovery Week 2", weeks:"Week 8",
+      style:"Active Flexibility · Core Circuit · Cardio Boxing · Active Mobility · Core Circuit · Speed & Agility · MFR",
+      wkCount:1,
+      days:[
+        {n:"Active Flexibility",focus:"Flexibility · Mon",          dur:"30 min",    ex:[]},
+        {n:"Core Circuit",      focus:"Core · Tue",                 dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Wed",               dur:"30–45 min", ex:[]},
+        {n:"Active Mobility",   focus:"Mobility · Thu",             dur:"30 min",    ex:[]},
+        {n:"Core Circuit",      focus:"Core · Fri",                 dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Speed and Agility", focus:"Agility · Sat",              dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    // ── PHASE 3 ── 4 unique weeks, no repeat pattern
+    {
+      name:"Phase 3 – Week 9", weeks:"Week 9",
+      style:"Upper Body · Plyometrix · Push Strength · Active Flexibility · Lower Body · Cardio Boxing · MFR",
+      wkCount:1,
+      days:[
+        {n:"Upper Body",        focus:"Strength · Mon",             dur:"30–45 min", ex:["— Block 1 —","Tempo Bench Press","Strict Arnie Press","Chest Fly","Skull Crusher","— Block 2 —","Narrow Supported Row","Prone Fly","Supinated Biceps Curl","— Finisher —","Hammer Curls","Lateral Raises"]},
+        {n:"Plyometrix",        focus:"Power · Tue",                dur:"30–45 min", ex:[]},
+        {n:"Push Strength",     focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Goblet Squat","Alternating Step Ups","Wide Stance Rotational Push","— Block 2 —","Sumo Squats","Incline Bench Press","Curtsey Lunges","Push Press","— Finisher —","Squat Thruster"]},
+        {n:"Active Flexibility",focus:"Flexibility · Thu",          dur:"30 min",    ex:[]},
+        {n:"Lower Body",        focus:"Strength · Fri",             dur:"30–45 min", ex:["— Block 1 —","Dual Front Squat","Bulgarian Split Squat (Right)","Bulgarian Split Squat (Left)","— Block 2 —","Romanian Deadlift (RDL)","Lateral Bench Step Downs (Right)","Lateral Bench Step Downs (Left)","— Finisher —","Alt Lateral Lunges","Suitcase Deadlift"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Sat",               dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    {
+      name:"Phase 3 – Week 10", weeks:"Week 10",
+      style:"Full Body Strength · Accel/Decel · Pull Strength · Active Mobility · Full Body Power · Speed & Agility · MFR",
+      wkCount:1,
+      days:[
+        {n:"Full Body Strength",focus:"Strength · Mon",             dur:"30–45 min", ex:["— Block 1 —","Squat Thruster","Chest Press to Leg Raise","2 RDL to 2 Bent Over Row","Devil's Press","— Block 2 —","Heel Elevated Squat","Frontal to Lateral Raise","— Finisher —","Renegade Row","Ground to Overhead"]},
+        {n:"Accel/Decel",       focus:"Agility · Tue",              dur:"30–45 min", ex:[]},
+        {n:"Pull Strength",     focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Dumbbell Clean","Hip Thrust on Bench","Upright Row","— Block 2 —","RDL","SA Row Right","SA Row Left","Pull Over","— Finisher —","Skier Swing","Bent Over Reverse Flys"]},
+        {n:"Active Mobility",   focus:"Mobility · Thu",             dur:"30 min",    ex:[]},
+        {n:"Full Body Power",   focus:"Power · Fri",                dur:"30–45 min", ex:["— Block 1 —","Glute Swings R","Glute Swings L","Clean to Press R","Clean to Press L","SA Devil's Press R","SA Devil's Press L","— Block 2 —","Single Leg Squat to Bench","— Finisher —","Heromaker"]},
+        {n:"Speed and Agility", focus:"Agility · Sat",              dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    {
+      name:"Phase 3 – Week 11", weeks:"Week 11",
+      style:"Lower Body · Cardio Boxing · Pull Strength · Active Flexibility · Upper Body · Plyometrix · MFR",
+      wkCount:1,
+      days:[
+        {n:"Lower Body",        focus:"Strength · Mon",             dur:"30–45 min", ex:["— Block 1 —","Dual Front Squat","Bulgarian Split Squat (Right)","Bulgarian Split Squat (Left)","— Block 2 —","Romanian Deadlift (RDL)","Lateral Bench Step Downs (Right)","Lateral Bench Step Downs (Left)","— Finisher —","Alt Lateral Lunges","Suitcase Deadlift"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Tue",               dur:"30–45 min", ex:[]},
+        {n:"Pull Strength",     focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Dumbbell Clean","Hip Thrust on Bench","Upright Row","— Block 2 —","RDL","SA Row Right","SA Row Left","Pull Over","— Finisher —","Skier Swing","Bent Over Reverse Flys"]},
+        {n:"Active Flexibility",focus:"Flexibility · Thu",          dur:"30 min",    ex:[]},
+        {n:"Upper Body",        focus:"Strength · Fri",             dur:"30–45 min", ex:["— Block 1 —","Tempo Bench Press","Strict Arnie Press","Chest Fly","Skull Crusher","— Block 2 —","Narrow Supported Row","Prone Fly","Supinated Biceps Curl","— Finisher —","Hammer Curls","Lateral Raises"]},
+        {n:"Plyometrix",        focus:"Power · Sat",                dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    {
+      name:"Phase 3 – Week 12", weeks:"Week 12",
+      style:"Full Body Power · Speed & Agility · Push Strength · Active Mobility · Full Body Strength · Accel/Decel · MFR",
+      wkCount:1,
+      days:[
+        {n:"Full Body Power",   focus:"Power · Mon",                dur:"30–45 min", ex:["— Block 1 —","Glute Swings R","Glute Swings L","Clean to Press R","Clean to Press L","SA Devil's Press R","SA Devil's Press L","— Block 2 —","Single Leg Squat to Bench","— Finisher —","Heromaker"]},
+        {n:"Speed and Agility", focus:"Agility · Tue",              dur:"30–45 min", ex:[]},
+        {n:"Push Strength",     focus:"Strength · Wed",             dur:"30–45 min", ex:["— Block 1 —","Goblet Squat","Alternating Step Ups","Wide Stance Rotational Push","— Block 2 —","Sumo Squats","Incline Bench Press","Curtsey Lunges","Push Press","— Finisher —","Squat Thruster"]},
+        {n:"Active Mobility",   focus:"Mobility · Thu",             dur:"30 min",    ex:[]},
+        {n:"Full Body Strength",focus:"Strength · Fri",             dur:"30–45 min", ex:["— Block 1 —","Squat Thruster","Chest Press to Leg Raise","2 RDL to 2 Bent Over Row","Devil's Press","— Block 2 —","Heel Elevated Squat","Frontal to Lateral Raise","— Finisher —","Renegade Row","Ground to Overhead"]},
+        {n:"Accel/Decel",       focus:"Agility · Sat",              dur:"30–45 min", ex:[]},
+        {n:"Myofascial Release",focus:"Recovery · Sun",             dur:"30 min",    ex:[]},
+      ]
+    },
+    {
+      name:"Recovery Week 3 (Final)", weeks:"Week 13",
+      style:"Active Flexibility · Core Circuit · Cardio Boxing · Active Mobility · Core Circuit · Speed & Agility · (no Sunday)",
+      wkCount:1,
+      days:[
+        {n:"Active Flexibility",focus:"Flexibility · Mon",          dur:"30 min",    ex:[]},
+        {n:"Core Circuit",      focus:"Core · Tue",                 dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Cardio Boxing",     focus:"Cardio · Wed",               dur:"30–45 min", ex:[]},
+        {n:"Active Mobility",   focus:"Mobility · Thu",             dur:"30 min",    ex:[]},
+        {n:"Core Circuit",      focus:"Core · Fri",                 dur:"30–45 min", ex:["— Block 1 —","Russian Twist","Tall Kneeling Alt Halo","Plank Pull Through","— Block 2 —","Half Kneeling Woodchop R/L","Butterfly Sit Up"]},
+        {n:"Speed and Agility", focus:"Agility · Sat",              dur:"30–45 min", ex:[]},
+      ]
+    }
+  ]
+};
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const SK = (p,b,w,d,e) => `bodi_${p}_b${b}_w${w}_d${d}_e${e}`;
+const DK = (p,b,w,d)   => `bodi_${p}_b${b}_w${w}_d${d}_done`;
+const NK = (p,b,w,d)   => `bodi_${p}_b${b}_w${w}_d${d}_notes`;
+
+function getSets(p,b,w,d,e)       { try{const r=localStorage.getItem(SK(p,b,w,d,e));if(r)return JSON.parse(r);}catch{}; return [{w:'',r:''},{w:'',r:''},{w:'',r:''}]; }
+function saveSets(p,b,w,d,e,sets) { try{localStorage.setItem(SK(p,b,w,d,e),JSON.stringify(sets));}catch{} }
+function isDone(p,b,w,d)          { return !!localStorage.getItem(DK(p,b,w,d)); }
+function setDone(p,b,w,d,v)       { v?localStorage.setItem(DK(p,b,w,d),'1'):localStorage.removeItem(DK(p,b,w,d)); }
+function getNotes(p,b,w,d)        { return localStorage.getItem(NK(p,b,w,d))||''; }
+function saveNotes(p,b,w,d,v)     { localStorage.setItem(NK(p,b,w,d),v); }
+
+function isHeader(name){return name.startsWith('—')&&name.endsWith('—');}
+
+function blockHasData(p,b,wk) {
+  const days=BLOCKS[p][b].days;
+  for(let d=0;d<days.length;d++){
+    if(isDone(p,b,wk,d))return true;
+    for(let e=0;e<days[d].ex.length;e++){
+      if(isHeader(days[d].ex[e]))continue;
+      if(getSets(p,b,wk,d,e).some(s=>s.w||s.r))return true;
+    }
+  }
+  return false;
+}
+
+// ── UI STATE ──────────────────────────────────────────────────────────────────
+const state = {}; // `${prog}_${bi}` => {activeWk, cmpOpen}
+function getState(p,b){return state[`${p}_${b}`]||(state[`${p}_${b}`]={activeWk:0,cmpOpen:false});}
+
+// ── FOCUS COLOR ───────────────────────────────────────────────────────────────
+function focusColor(focus,prog){
+  if(focus.includes('Rest')||focus.includes('Full Rest'))return'#555';
+  if(focus.includes('Cardio')||focus.includes('Optional')||focus.includes('Recovery')||focus.includes('Mobility')||focus.includes('Flexibility')||focus.includes('Aerobic'))return'#3bbf88';
+  return prog==='dd'?'#FF4B12':'#0077FF';
+}
+
+// ── RENDER EXERCISE ───────────────────────────────────────────────────────────
+function renderEx(p,b,wk,d,e,name){
+  // Section headers (— Block 1 —, — Finisher —, etc.) render as dividers, not log rows
+  if(name.startsWith('—')&&name.endsWith('—')){
+    const label=name.replace(/^—\s*/,'').replace(/\s*—$/,'');
+    return `<div style="margin:10px 0 6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--p9-color, #0077ff);opacity:0.8">${label}</div>`;
+  }
+  const sets=getSets(p,b,wk,d,e);
+  const id=`ex_${p}_${b}_${wk}_${d}_${e}`;
+  const sHTML=sets.map((s,si)=>`
+    <div class="set-grp">
+      <span class="set-lbl">S${si+1}</span>
+      <input type="number" class="sinput w" placeholder="lbs" value="${s.w||''}" oninput="upd('${p}',${b},${wk},${d},${e},${si},'w',this.value)">
+      <input type="number" class="sinput r" placeholder="reps" value="${s.r||''}" oninput="upd('${p}',${b},${wk},${d},${e},${si},'r',this.value)">
+    </div>`).join('');
+  return `<div class="ex-row" id="${id}">
+    <div class="ex-name">${name}</div>
+    <div class="sets-row">${sHTML}
+      <button class="sbtn" onclick="addSet('${p}',${b},${wk},${d},${e})">+</button>
+      ${sets.length>1?`<button class="sbtn" onclick="remSet('${p}',${b},${wk},${d},${e})" style="font-size:13px">−</button>`:''}
+    </div>
+  </div>`;
+}
+
+// ── RENDER DAY ────────────────────────────────────────────────────────────────
+function renderDay(p,b,wk,di,day){
+  const fc=focusColor(day.focus,p);
+  const done=isDone(p,b,wk,di);
+  const hasBody=day.ex.length>0;
+  const notes=getNotes(p,b,wk,di);
+  const exHTML=day.ex.map((ex,ei)=>renderEx(p,b,wk,di,ei,ex)).join('');
+  return `<div class="day-card" id="dc_${p}_${b}_${wk}_${di}">
+    <div class="day-header" style="cursor:${hasBody?'pointer':'default'}" onclick="${hasBody?`tDay('${p}',${b},${wk},${di})`:''}">
+      <div class="day-num" id="dn_${p}_${b}_${wk}_${di}"
+        style="border-color:${fc};background:${done?fc:'rgba(255,255,255,0.05)'};color:${done?'#fff':fc}"
+        onclick="event.stopPropagation();tDone('${p}',${b},${wk},${di},'${fc}')">
+        ${done?'✓':di+1}
+      </div>
+      <div>
+        <div class="day-name">${day.n}</div>
+        <div class="day-focus">${day.focus} · ${day.dur}</div>
+      </div>
+      ${hasBody?`<div class="day-chev" id="dc_chev_${p}_${b}_${wk}_${di}">⌄</div>`:''}
+    </div>
+    ${hasBody?`<div class="day-body" id="db_${p}_${b}_${wk}_${di}">
+      <div class="day-divider"></div>${exHTML}
+      <textarea class="notes-field" rows="2" placeholder="Notes for this workout..."
+        oninput="saveNotes('${p}',${b},${wk},${di},this.value)">${notes}</textarea>
+    </div>`:''}
+  </div>`;
+}
+
+// ── RENDER COMPARE ────────────────────────────────────────────────────────────
+function bestSet(sets){
+  let best={w:0,r:0};
+  sets.forEach(s=>{const w=parseFloat(s.w)||0,r=parseInt(s.r)||0;if(w>best.w||(w===best.w&&r>best.r))best={w,r};});
+  return best;
+}
+
+function renderCompare(p,b){
+  const block=BLOCKS[p][b];
+  const nwk=block.wkCount;
+  if(nwk<=1)return'';
+  let html='';
+  block.days.forEach((day,di)=>{
+    if(!day.ex.length)return;
+    let rows='';
+    day.ex.forEach((ex,ei)=>{
+      if(isHeader(ex))return;
+      const wkData=Array.from({length:nwk},(_,wk)=>bestSet(getSets(p,b,wk,di,ei)));
+      if(!wkData.some(d=>d.w||d.r))return;
+      let cells=`<td class="ex-cell">${ex}</td>`;
+      wkData.forEach((d,wk)=>{
+        const prev=wk>0?wkData[wk-1]:null;
+        const val=(d.w||d.r)?`${d.w?d.w+'lb':''} ${d.r?'×'+d.r:''}`.trim():'<span style="color:var(--dim)">—</span>';
+        let delta='';
+        if(prev&&(d.w||d.r)&&(prev.w||prev.r)){
+          if(d.w>prev.w)delta=`<span class="delta-up">↑ +${+(d.w-prev.w).toFixed(1)}lb</span>`;
+          else if(d.w<prev.w)delta=`<span class="delta-down">↓ ${+(d.w-prev.w).toFixed(1)}lb</span>`;
+          else if(d.r>prev.r)delta=`<span class="delta-up">↑ +${d.r-prev.r} rep</span>`;
+          else if(d.r<prev.r)delta=`<span class="delta-down">↓ ${d.r-prev.r} rep</span>`;
+          else delta=`<span class="delta-same">—</span>`;
+        }
+        cells+=`<td>${val}${delta}</td>`;
+      });
+      rows+=`<tr>${cells}</tr>`;
+    });
+    if(!rows)return;
+    let ths=`<th>Exercise</th>`+Array.from({length:nwk},(_,wk)=>`<th>Wk ${wk+1}</th>`).join('');
+    html+=`<div class="cmp-card">
+      <div class="cmp-card-head">${day.n}</div>
+      <div style="overflow-x:auto"><table class="cmp-table"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+  });
+  return html||`<div class="no-cmp-data">Log data in at least 2 weeks to see comparisons.</div>`;
+}
+
+// ── RENDER BLOCK ──────────────────────────────────────────────────────────────
+function renderBlock(p,bi){
+  const block=BLOCKS[p][bi];
+  const {activeWk,cmpOpen}=getState(p,bi);
+  const hasWeeks=block.wkCount>1;
+  const color=p==='dd'?'var(--dd-color)':'var(--p9-color)';
+
+  const wtHTML=hasWeeks?`<div class="week-tabs">${Array.from({length:block.wkCount},(_,wk)=>{
+    const logged=blockHasData(p,bi,wk);
+    return `<button class="week-tab ${wk===activeWk?'active-'+p:''} ${logged?'logged':''}"
+      onclick="switchWk('${p}',${bi},${wk})">Week ${wk+1}</button>`;
+  }).join('')}</div>`:'';
+
+  const daysHTML=block.days.map((day,di)=>renderDay(p,bi,activeWk,di,day)).join('');
+
+  const cmpHTML=hasWeeks?`
+    <div class="compare-bar">
+      <span class="compare-label">Week-over-Week Comparison</span>
+      <button class="compare-toggle ${cmpOpen?'on':''}" onclick="tCmp('${p}',${bi})">
+        ${cmpOpen?'Hide ▲':'Compare Weeks ▼'}
+      </button>
+    </div>
+    <div class="compare-section ${cmpOpen?'open':''}" id="cmp_${p}_${bi}">${cmpOpen?renderCompare(p,bi):''}</div>`:'';
+
+  return `<div class="block" id="blk_${p}_${bi}">
+    <div class="block-header ${p}" onclick="tBlock('${p}',${bi})">
+      <div>
+        <div class="block-title" style="color:${color}">${block.name}</div>
+        <div class="block-sub">${block.weeks} · ${block.style}</div>
+      </div>
+      <div class="block-chevron" id="bchev_${p}_${bi}">›</div>
+    </div>
+    <div class="block-body" id="bbody_${p}_${bi}">
+      ${wtHTML}
+      <div id="days_${p}_${bi}">${daysHTML}</div>
+      ${cmpHTML}
+    </div>
+  </div>`;
+}
+
+function buildProg(p){
+  const container=document.getElementById(`${p}-blocks`);
+  container.innerHTML=BLOCKS[p].map((_,bi)=>renderBlock(p,bi)).join('');
+  updateProgress(p);
+  // open first block
+  document.getElementById(`bbody_${p}_0`).classList.add('open');
+  document.getElementById(`bchev_${p}_0`).classList.add('open');
+}
+
+// ── INTERACTIONS ──────────────────────────────────────────────────────────────
+function tBlock(p,bi){
+  document.getElementById(`bbody_${p}_${bi}`).classList.toggle('open');
+  document.getElementById(`bchev_${p}_${bi}`).classList.toggle('open');
+}
+
+function tDay(p,b,wk,di){
+  const body=document.getElementById(`db_${p}_${b}_${wk}_${di}`);
+  const card=document.getElementById(`dc_${p}_${b}_${wk}_${di}`);
+  const chev=document.getElementById(`dc_chev_${p}_${b}_${wk}_${di}`);
+  if(!body)return;
+  const open=body.classList.toggle('open');
+  if(chev)chev.classList.toggle('open');
+  card.classList.toggle('exp-dd',p==='dd'&&open);
+  card.classList.toggle('exp-p9',p==='p9'&&open);
+}
+
+function tDone(p,b,wk,di,fc){
+  const was=isDone(p,b,wk,di);
+  setDone(p,b,wk,di,!was);
+  const el=document.getElementById(`dn_${p}_${b}_${wk}_${di}`);
+  if(!was){el.style.background=fc;el.style.color='#fff';el.textContent='✓';}
+  else{el.style.background='rgba(255,255,255,0.05)';el.style.color=fc;el.textContent=di+1;}
+  updateProgress(p);
+  if(getState(p,b).cmpOpen)refreshCmp(p,b);
+}
+
+function upd(p,b,wk,d,e,si,field,val){
+  const sets=getSets(p,b,wk,d,e);
+  sets[si][field]=val;
+  saveSets(p,b,wk,d,e,sets);
+  refreshWkDots(p,b);
+  if(getState(p,b).cmpOpen)refreshCmp(p,b);
+}
+
+function addSet(p,b,wk,d,e){const sets=getSets(p,b,wk,d,e);sets.push({w:'',r:''});saveSets(p,b,wk,d,e,sets);reEx(p,b,wk,d,e);}
+function remSet(p,b,wk,d,e){const sets=getSets(p,b,wk,d,e);if(sets.length>1){sets.pop();saveSets(p,b,wk,d,e,sets);reEx(p,b,wk,d,e);}}
+function reEx(p,b,wk,d,e){const name=BLOCKS[p][b].days[d].ex[e];const id=`ex_${p}_${b}_${wk}_${d}_${e}`;const el=document.getElementById(id);if(el)el.outerHTML=renderEx(p,b,wk,d,e,name);}
+
+function switchWk(p,b,wk){
+  getState(p,b).activeWk=wk;
+  const block=BLOCKS[p][b];
+  document.getElementById(`days_${p}_${b}`).innerHTML=block.days.map((day,di)=>renderDay(p,b,wk,di,day)).join('');
+  refreshWkDots(p,b);
+  if(getState(p,b).cmpOpen)refreshCmp(p,b);
+}
+
+function refreshWkDots(p,b){
+  const {activeWk}=getState(p,b);
+  const tabs=document.querySelectorAll(`#blk_${p}_${b} .week-tab`);
+  tabs.forEach((btn,wk)=>{
+    btn.classList.toggle('logged',blockHasData(p,b,wk));
+    btn.className=btn.className.replace(/active-\w+/g,'').trim();
+    if(wk===activeWk)btn.classList.add(`active-${p}`);
+  });
+}
+
+function tCmp(p,b){
+  const s=getState(p,b);
+  s.cmpOpen=!s.cmpOpen;
+  const el=document.getElementById(`cmp_${p}_${b}`);
+  const btn=el.previousElementSibling.querySelector('.compare-toggle');
+  el.classList.toggle('open',s.cmpOpen);
+  btn.classList.toggle('on',s.cmpOpen);
+  btn.textContent=s.cmpOpen?'Hide ▲':'Compare Weeks ▼';
+  if(s.cmpOpen)el.innerHTML=renderCompare(p,b);
+}
+function refreshCmp(p,b){const el=document.getElementById(`cmp_${p}_${b}`);if(el&&getState(p,b).cmpOpen)el.innerHTML=renderCompare(p,b);}
+
+function updateProgress(p){
+  let done=0,total=0;
+  BLOCKS[p].forEach((block,bi)=>{
+    block.days.forEach((day,di)=>{
+      if(day.ex.length>0){
+        for(let wk=0;wk<block.wkCount;wk++){total++;if(isDone(p,bi,wk,di))done++;}
+      }
+    });
+  });
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById(`${p}-prog-txt`).textContent=`${done} / ${total}`;
+  document.getElementById(`${p}-prog-bar`).style.width=pct+'%';
+}
+
+function switchProg(p){
+  document.querySelectorAll('.program-view').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`view-${p}`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(btn=>{btn.className='tab-btn';});
+  document.getElementById(`tab-${p}`).classList.add(`active-${p}`);
+}
+
+buildProg('dd');
+buildProg('p9');
+</script>
+</body>
+</html>
